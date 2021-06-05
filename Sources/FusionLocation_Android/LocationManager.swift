@@ -8,7 +8,8 @@ import AndroidLocation
 import FusionLocation_Common
 
 
-public struct LocationManager {
+public class LocationManager {
+
   typealias AndroidLocationManager = AndroidLocation.LocationManager
 
   private var currentActivity: Activity? { Application.currentActivity }
@@ -17,8 +18,8 @@ public struct LocationManager {
   private let locationListener: LocationListener
   
   public let usage: LocationUsage
-
-  public init(usage: LocationUsage) {
+  
+  public required init(usage: LocationUsage) {
     self.usage = usage
 
     self.locationManager =
@@ -27,13 +28,15 @@ public struct LocationManager {
   
     self.locationListener = LocationListener()
   }
+}
 
-  private func requestPermissions() {
+extension LocationManager: LocationManagerProtocol {
+  public func requestAuthorization() {
     currentActivity?.requestPermissions(      
       permissions: [Manifest.permission.ACCESS_FINE_LOCATION], requestCode: 1111)
   }
 
-  private func checkPermissions() -> Bool {
+  public func checkAuthorization() -> Bool {
     guard
       let status = currentActivity?.checkSelfPermission(
         permission: Manifest.permission.ACCESS_FINE_LOCATION),
@@ -41,22 +44,19 @@ public struct LocationManager {
       status == PackageManagerStatic.PERMISSION_GRANTED
     else {
       print("Permissions not granted. Requesting...")
-      requestPermissions()
+  
       return false
     }
     print("Permissions granted")
     return true
   }
 
-  public func requestCurrentLocation(receiver: @escaping (FusionLocation_Common.Location) -> Void) {    
+  public func requestCurrentLocation(receiver: @escaping (FusionLocation_Common.Location?) -> Void) {    
     guard
-      checkPermissions(),
-      let provider = self.locationManager?.getBestProvider(criteria: Criteria(), enabledOnly: false)
+        let provider = self.locationManager?.getBestProvider(criteria: Criteria(), enabledOnly: true)
     else {
       return
-    }
-        
-    self.locationManager?.requestLocationUpdates(provider: provider, minTime: 400, minDistance: 1, listener: locationListener)
+    }   
             
     guard let aLocation = self.locationManager?.getLastKnownLocation(provider: provider) else {
       print("Last known location is unavailable")
@@ -66,13 +66,53 @@ public struct LocationManager {
     receiver(aLocation.location)
   }
 
-  public func startUpdatingLocation(receiver: @escaping (FusionLocation_Common.Location) -> Void) {
+	public func startUpdatingLocation(receiver: @escaping (FusionLocation_Common.Location?) -> Void) {
+		self.locationListener.receiver = receiver
+	    guard
+    	    let provider = self.locationManager?.getBestProvider(criteria: Criteria(), enabledOnly: false)
+	    else {
+	      return
+    	}
+	
+	    self.locationManager?.requestLocationUpdates(provider: provider, minTime: 400, minDistance: 1, listener: locationListener)
+            
+    	guard let aLocation = self.locationManager?.getLastKnownLocation(provider: provider) else {
+      		print("Last known location is unavailable")
+      		return
+    	}
 
-  }
+	    receiver(aLocation.location)
+	}
 
-  public func stopUpdatingLocation() {
+  	public func stopUpdatingLocation() {
+		self.locationListener.receiver = nil
+  	    self.locationManager?.removeUpdates(listener: locationListener)
 
-  }
+	}
+  
+    public func distanceBetween(from location1: FusionLocation_Common.Location, to location2: FusionLocation_Common.Location) -> Double {
+        let startLocation = AndroidLocation.Location(provider: AndroidLocation.LocationManager.GPS_PROVIDER)
+		startLocation.setLatitude(latitude: location1.coordinate.latitude)
+		startLocation.setLongitude(longitude: location1.coordinate.longitude)
+		
+		let endLocation = AndroidLocation.Location(provider: AndroidLocation.LocationManager.GPS_PROVIDER)
+		endLocation.setLatitude(latitude: location2.coordinate.latitude)
+		endLocation.setLongitude(longitude: location2.coordinate.longitude)
+		
+		return Double(startLocation.distanceTo(dest: endLocation))
+    }
+
+    public func bearingBetween(from location1: FusionLocation_Common.Location, to location2: FusionLocation_Common.Location) -> Double {
+	    let startLocation = AndroidLocation.Location(provider: AndroidLocation.LocationManager.GPS_PROVIDER)
+		startLocation.setLatitude(latitude: location1.coordinate.latitude)
+		startLocation.setLongitude(longitude: location1.coordinate.longitude)
+		
+		let endLocation = AndroidLocation.Location(provider: AndroidLocation.LocationManager.GPS_PROVIDER)
+		endLocation.setLatitude(latitude: location2.coordinate.latitude)
+		endLocation.setLongitude(longitude: location2.coordinate.longitude)
+		
+		return Double(startLocation.bearingTo(dest: endLocation))
+    }
 }
 
 fileprivate extension AndroidLocation.Location {
@@ -83,8 +123,11 @@ fileprivate extension AndroidLocation.Location {
 
 
 class LocationListener: Object, AndroidLocation.LocationListener {
+  var receiver: ((FusionLocation_Common.Location?) -> Void)?
+  
   func onLocationChanged(location: AndroidLocation.Location?) { 
-    print("Location: \(location?.getLatitude()), \(location?.getLongitude())")
+    guard let receiver = receiver, let location = location else { return }
+    receiver(location.location)
   }
 
   func onStatusChanged(provider: String, status: Int32, extras: Bundle?) { 
