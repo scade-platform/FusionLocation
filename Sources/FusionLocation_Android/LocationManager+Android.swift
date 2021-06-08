@@ -10,64 +10,73 @@ import FusionLocation_Common
 
 public class LocationManager {
 
-  typealias AndroidLocationManager = AndroidLocation.LocationManager
+	typealias AndroidLocationManager = AndroidLocation.LocationManager
 
-  private var currentActivity: Activity? { Application.currentActivity }
+	private var currentActivity: Activity? { Application.currentActivity }
 
-  private let locationManager: AndroidLocationManager?
-  private let locationListener: LocationListener
+	private let locationManager: AndroidLocationManager?
+	private let locationListener: LocationListener
   
-  public let usage: LocationUsage
+	public let usage: LocationUsage
+	public var isOnlyOnce: Bool = false
   
-  public required init(usage: LocationUsage) {
-    self.usage = usage
+  
+	public required init(usage: LocationUsage) {
+		self.usage = usage
 
-    self.locationManager =
-      Application.currentActivity?.getSystemService(name: ContextStatic.LOCATION_SERVICE)
-      as? AndroidLocationManager
+		self.locationManager =
+			Application.currentActivity?.getSystemService(name: ContextStatic.LOCATION_SERVICE)
+			as? AndroidLocationManager
   
-    self.locationListener = LocationListener()
-  }
+		self.locationListener = LocationListener()    
+	}
 }
 
 extension LocationManager: LocationManagerProtocol {
-  public func requestAuthorization() {
-    currentActivity?.requestPermissions(      
-      permissions: [Manifest.permission.ACCESS_FINE_LOCATION], requestCode: 1111)
-  }
+	public func requestAuthorization() {
+		currentActivity?.requestPermissions(      
+		permissions: [Manifest.permission.ACCESS_FINE_LOCATION], requestCode: 1111)
+	}
 
-  public func checkAuthorization() -> Bool {
-    guard
-      let status = currentActivity?.checkSelfPermission(
-        permission: Manifest.permission.ACCESS_FINE_LOCATION),
+	public func checkAuthorization() -> Bool {
+		guard
+			let status = currentActivity?.checkSelfPermission(
+			permission: Manifest.permission.ACCESS_FINE_LOCATION),
 
-      status == PackageManagerStatic.PERMISSION_GRANTED
-    else {
-      print("Permissions not granted. Requesting...")
-  
-      return false
-    }
-    print("Permissions granted")
-    return true
-  }
+			status == PackageManagerStatic.PERMISSION_GRANTED
+		else {  
+			return false
+		}
 
-  public func requestCurrentLocation(receiver: @escaping (FusionLocation_Common.Location?) -> Void) {    
-    guard
-        let provider = self.locationManager?.getBestProvider(criteria: Criteria(), enabledOnly: true)
-    else {
-      return
-    }   
-            
-    guard let aLocation = self.locationManager?.getLastKnownLocation(provider: provider) else {
-      print("Last known location is unavailable")
-      return
-    }
+		return true
+	}
 
-    receiver(aLocation.location)
-  }
+	public func requestCurrentLocation(receiver: @escaping (FusionLocation_Common.Location?) -> Void) {    
+		self.locationListener.receiver = receiver  
+		guard checkAuthorization() else {
+			receiver(nil)
+			return
+		}
+        		
+		guard
+			let provider = self.locationManager?.getBestProvider(criteria: Criteria(), enabledOnly: false)
+		else {
+			return
+		}   
+    
+		self.locationListener.locationManager = self
+		isOnlyOnce = true
+
+		self.locationManager?.requestLocationUpdates(provider: provider, minTime: 400, minDistance: 1, listener: locationListener)
+	}
 
 	public func startUpdatingLocation(receiver: @escaping (FusionLocation_Common.Location?) -> Void) {
 		self.locationListener.receiver = receiver
+		guard checkAuthorization() else {
+            receiver(nil)
+            return
+        }
+        
 	    guard
     	    let provider = self.locationManager?.getBestProvider(criteria: Criteria(), enabledOnly: false)
 	    else {
@@ -77,7 +86,6 @@ extension LocationManager: LocationManagerProtocol {
 	    self.locationManager?.requestLocationUpdates(provider: provider, minTime: 400, minDistance: 1, listener: locationListener)
             
     	guard let aLocation = self.locationManager?.getLastKnownLocation(provider: provider) else {
-      		print("Last known location is unavailable")
       		return
     	}
 
@@ -116,29 +124,34 @@ extension LocationManager: LocationManagerProtocol {
 }
 
 fileprivate extension AndroidLocation.Location {
-  var location: FusionLocation_Common.Location {
-    FusionLocation_Common.Location(latitude: self.getLatitude(), longitude: self.getLongitude())
-  }
+	var location: FusionLocation_Common.Location {
+		FusionLocation_Common.Location(latitude: self.getLatitude(), longitude: self.getLongitude())
+	}
 }
 
 
 class LocationListener: Object, AndroidLocation.LocationListener {
-  var receiver: ((FusionLocation_Common.Location?) -> Void)?
+	var receiver: ((FusionLocation_Common.Location?) -> Void)?
+	var locationManager: LocationManager?
   
-  func onLocationChanged(location: AndroidLocation.Location?) { 
-    guard let receiver = receiver, let location = location else { return }
-    receiver(location.location)
-  }
+	func onLocationChanged(location: AndroidLocation.Location?) { 
+		guard let receiver = receiver, let location = location else { return }
+		if let locationManager = self.locationManager, locationManager.isOnlyOnce {
+ 			locationManager.stopUpdatingLocation()
+			locationManager.isOnlyOnce = false
+		}
+    
+		receiver(location.location)
+	}
 
-  func onStatusChanged(provider: String, status: Int32, extras: Bundle?) { 
+	func onStatusChanged(provider: String, status: Int32, extras: Bundle?) { 
   
-  }
+  	}
 
-  func onProviderEnabled(provider: String) { 
-  
-  }
+	func onProviderEnabled(provider: String) { 
+  	}
 
-  func onProviderDisabled(provider: String) { 
+	func onProviderDisabled(provider: String) { 
   
-  }
+	}
 }
