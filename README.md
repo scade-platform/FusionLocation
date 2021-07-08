@@ -53,6 +53,8 @@ Permission Settings
 <Add Permission specific text and instructions>
 
 ```yaml
+...
+ios:
   ...
   plist:
     ...
@@ -103,8 +105,8 @@ Features
 --------
 List of features
 * start/stop location tracking
-* get distance between 2 locations
-* get bearing between 2 locations
+* get distance between two locations
+* get bearing between two locations
 
 API
 ---
