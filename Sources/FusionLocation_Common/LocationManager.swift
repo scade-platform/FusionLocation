@@ -9,9 +9,9 @@ public protocol LocationManagerProtocol {
     /*
      *  Creates and returns a new LocationManager object initialized with the LocationUsage.
      *  
-     *  Parameters:  usage    	It targets only for iOS
-     *  						It is used when call requestAuthorization.
-     *  						If always, it calls requestAlwaysAuthorization. If whenInUse, it calls requestWhenInUseAuthorization.
+     *  Parameters:  usage  It targets only for iOS
+     *                      It is used when call requestAuthorization.
+     *                      If always, it calls requestAlwaysAuthorization. If whenInUse, it calls requestWhenInUseAuthorization.
      */
     init(usage: LocationUsage)
 
@@ -19,8 +19,8 @@ public protocol LocationManagerProtocol {
      * @property requestAuthorization
      *
      * @discussion Request a authorization.
-     *				Calling this method will trigger a prompt to request usage
-     *          	authorization from the user.
+     *	           Calling. this method will trigger a prompt to request usage
+     *             authorization from the user.
      */  
     func requestAuthorization()
     
@@ -28,15 +28,15 @@ public protocol LocationManagerProtocol {
      * @property requestCurrentLocation
      *
      * @discussion Request a single location update.
-     *				The service will attempt to determine location. The location update will be delivered
-     *          	via the receiver
+     *             The service will attempt to determine location. The location update will be delivered
+     *             via the receiver
      *				
-     *				If no location can be determined, the receiver will be delivered with location nil.
+     *             If no location can be determined, the receiver will be delivered with location nil.
      *				
-     *				There can only be one outstanding location request and this method can
-     *				not be used concurrently with startUpdatingLocation  Calling either of those methods will
-     *				immediately cancel the location request.  The method
-     *				topUpdatingLocation can be used to explicitly cancel the request.
+     *             There can only be one outstanding location request and this method can
+     *             not be used concurrently with startUpdatingLocation  Calling either of those methods will
+     *             immediately cancel the location request.  The method
+     *             topUpdatingLocation can be used to explicitly cancel the request.
      */
     func requestCurrentLocation(receiver: @escaping (Location?) -> Void)
     
@@ -44,10 +44,10 @@ public protocol LocationManagerProtocol {
      * @property startUpdatingLocation
      *
      * @discussion Start updating locations.
-     *				The service will attempt to determine location. The location update will be delivered
-     *          	via the receiver
+     *             The service will attempt to determine location. The location update will be delivered
+     *             via the receiver
      *				
-     *				If no location can be determined, the receiver will be delivered with location nil.
+     *             If no location can be determined, the receiver will be delivered with location nil.
      */
     func startUpdatingLocation(receiver: @escaping (Location?) -> Void)
 
@@ -63,8 +63,8 @@ public protocol LocationManagerProtocol {
      *
      * @discussion Calculate the distance of two locations.
      *
-     * @param 	location1  from location.
-     *			location2  to location
+     * @param location1  from location.
+     *        location2  to location
      *
      * @result 	meter distance
      */
@@ -75,10 +75,10 @@ public protocol LocationManagerProtocol {
      *
      * @discussion Calculate the bearing of two locations.
      *
-     * @param 	location1  from location.
-     *			location2  to location
+     * @param location1  from location.
+     *        location2  to location
      *
-     * @result 	degree
+     * @result degree
      */
     func bearingBetween(from location1: Location, to location2: Location) -> Double
 }
